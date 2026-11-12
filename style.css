@@ -2009,3 +2009,325 @@ mark.search-highlight {
     padding: 0.6rem 0.9rem;
   }
 }
+
+
+/* ==========================================================
+   UNIQUE DESIGN TRIMS — Pustaka Cozy Signature Details
+   ========================================================== */
+
+/* ── 1. Decorative font variable ── */
+:root {
+  --font-decorative: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+  --gold-shimmer: linear-gradient(90deg, #c8873a 0%, #f0c060 40%, #d4824a 60%, #f5d080 100%);
+}
+
+/* ── 2. Hero section — ornamental corner flourishes ── */
+.hero-ornament {
+  position: absolute;
+  font-family: var(--font-decorative);
+  font-size: 2.4rem;
+  color: var(--cozy-caramel);
+  opacity: 0.28;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+  transition: opacity 0.4s;
+}
+.hero-section:hover .hero-ornament { opacity: 0.42; }
+.hero-ornament--tl { top: 1.1rem; left: 1.4rem; transform: rotate(0deg); }
+.hero-ornament--tr { top: 1.1rem; right: 1.4rem; transform: scaleX(-1); }
+
+/* ── 3. Hero subtitle — decorative italic quote style ── */
+.hero-subtitle {
+  font-family: var(--font-decorative);
+  font-style: italic;
+  font-size: 1.08rem;
+  letter-spacing: 0.01em;
+  color: var(--text-secondary);
+}
+.hero-quote-mark {
+  font-family: var(--font-decorative);
+  font-size: 1.5em;
+  line-height: 0;
+  vertical-align: -0.25em;
+  color: var(--cozy-caramel);
+  opacity: 0.65;
+  margin-right: 0.1em;
+}
+.hero-quote-mark--close { margin-left: 0.1em; margin-right: 0; }
+
+/* ── 4. Brand logo — gold foil shimmer animation ── */
+@keyframes shimmer-sweep {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.brand-icon {
+  position: relative;
+  overflow: hidden;
+}
+.brand-icon::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,220,130,0.38) 50%, transparent 60%);
+  background-size: 200% 100%;
+  animation: shimmer-sweep 3.2s ease-in-out infinite;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* ── 5. Navbar — subtle bottom decorative rule ── */
+.navbar {
+  border-bottom: none !important;
+  box-shadow: 0 1px 0 rgba(181,105,56,0.14), 0 2px 8px rgba(70,47,35,0.06);
+}
+.navbar::after {
+  content: '';
+  display: block;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, var(--cozy-caramel) 20%, var(--cozy-amber) 50%, var(--cozy-caramel) 80%, transparent 100%);
+  opacity: 0.45;
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+}
+
+/* ── 6. Section divider — decorative book-spine rule ── */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.5rem 0 1.5rem;
+  pointer-events: none;
+}
+.section-divider::before,
+.section-divider::after {
+  content: '';
+  flex: 1;
+  height: 3px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--cozy-espresso) 0px,  var(--cozy-espresso) 6px,
+    var(--cozy-caramel)  6px,  var(--cozy-caramel)  10px,
+    var(--cozy-amber)    10px, var(--cozy-amber)    14px,
+    var(--cozy-latte)    14px, var(--cozy-latte)    18px
+  );
+  border-radius: 2px;
+  opacity: 0.28;
+}
+.section-divider-icon {
+  font-family: var(--font-decorative);
+  font-size: 1.1rem;
+  color: var(--cozy-caramel);
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+/* ── 7. Catalog section header — serif italic accent ── */
+.catalog-section .section-header h3,
+#catalogHeaderTitle {
+  font-family: var(--font-decorative);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 1.5rem;
+  letter-spacing: -0.01em;
+}
+
+/* ── 8. Hero title — decorative underline flourish ── */
+.hero-title {
+  position: relative;
+  display: inline-block;
+}
+.hero-title::after {
+  content: '';
+  display: block;
+  margin: 0.45rem auto 0;
+  width: 72px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--cozy-caramel), var(--cozy-amber), var(--cozy-caramel));
+  opacity: 0.75;
+}
+
+/* ── 9. Category chips — bookmark tab shape ── */
+.chip {
+  position: relative;
+  padding-right: 1.4rem !important;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%);
+}
+.chip::after {
+  content: none; /* remove any pseudo-conflict */
+}
+
+/* ── 10. Book cards — paper grain texture overlay ── */
+.book-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 1;
+  border-radius: inherit;
+}
+.book-card {
+  position: relative;
+}
+/* Ensure card content sits above grain */
+.book-card > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* ── 11. Book card — left accent spine stripe ── */
+.book-card::after {
+  content: '';
+  position: absolute;
+  top: 12%;
+  bottom: 12%;
+  left: 0;
+  width: 3.5px;
+  border-radius: 0 2px 2px 0;
+  background: linear-gradient(180deg, var(--cozy-caramel) 0%, var(--cozy-amber) 50%, var(--cozy-mocha) 100%);
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+  z-index: 3;
+}
+.book-card:hover::after {
+  opacity: 0.75;
+}
+
+/* ── 12. Admin active badge — wax seal glow ── */
+.btn-auth-status.admin-active {
+  position: relative;
+  box-shadow: 0 0 0 2px #8ed4a7, 0 0 14px rgba(30,102,61,0.22) !important;
+}
+.btn-auth-status.admin-active::before {
+  content: '✦';
+  font-size: 0.6rem;
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #1e663d;
+  color: #fff;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 14px;
+  text-align: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+}
+
+/* ── 13. Stats ribbon — ornamental separators ── */
+.stats-ribbon {
+  position: relative;
+}
+.stat-pill + .stat-pill::before {
+  content: '◆';
+  position: absolute;
+  left: -0.1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.45rem;
+  color: var(--cozy-caramel);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ── 14. Hero section — torn paper bottom edge ── */
+.hero-section {
+  position: relative;
+}
+.hero-section::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 28px;
+  background: var(--bg-app);
+  clip-path: polygon(
+    0% 100%, 2% 30%, 5% 80%, 8% 20%, 11% 65%, 14% 15%,
+    17% 60%, 20% 25%, 23% 70%, 26% 20%, 29% 55%, 32% 10%,
+    35% 60%, 38% 25%, 41% 70%, 44% 15%, 47% 55%, 50% 20%,
+    53% 65%, 56% 15%, 59% 60%, 62% 20%, 65% 55%, 68% 10%,
+    71% 60%, 74% 25%, 77% 70%, 80% 20%, 83% 55%, 86% 15%,
+    89% 60%, 92% 25%, 95% 70%, 98% 20%, 100% 50%, 100% 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ── 15. Hero search wrapper — ensure above torn edge ── */
+.search-wrapper,
+.category-filter-wrapper {
+  position: relative;
+  z-index: 3;
+}
+
+/* ── 16. Book cover placeholder — decorative monogram ── */
+.cover-placeholder {
+  font-family: var(--font-decorative);
+  font-style: italic;
+  letter-spacing: 0.03em;
+}
+
+/* ── 17. Empty state — decorative italic message ── */
+.empty-state h3 {
+  font-family: var(--font-decorative);
+  font-style: italic;
+  font-size: 1.6rem;
+}
+
+/* ── 18. Modal header — decorative serif title ── */
+.modal-header h2,
+.modal-header h3 {
+  font-family: var(--font-decorative);
+  font-style: italic;
+  letter-spacing: -0.01em;
+}
+
+/* ── 19. Floating micro-ornament on hero badge ── */
+.hero-badge {
+  position: relative;
+  overflow: visible;
+}
+.hero-badge::before {
+  content: '✦';
+  position: absolute;
+  left: -0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.55rem;
+  color: var(--cozy-caramel);
+  opacity: 0.55;
+  animation: pulse-ornament 2.4s ease-in-out infinite;
+}
+.hero-badge::after {
+  content: '✦';
+  position: absolute;
+  right: -0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.55rem;
+  color: var(--cozy-caramel);
+  opacity: 0.55;
+  animation: pulse-ornament 2.4s ease-in-out infinite 1.2s;
+}
+@keyframes pulse-ornament {
+  0%, 100% { opacity: 0.3; transform: translateY(-50%) scale(0.9); }
+  50%       { opacity: 0.7; transform: translateY(-50%) scale(1.15); }
+}
+
+/* ── 20. Scrollbar — cozy branded ── */
+::-webkit-scrollbar { width: 7px; height: 7px; }
+::-webkit-scrollbar-track { background: var(--cozy-linen); }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--cozy-caramel), var(--cozy-mocha));
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--cozy-roast); }

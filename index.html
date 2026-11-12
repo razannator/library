@@ -3,52 +3,71 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Perpustakaan Jupul nih bos</title>
+  <title>Pustaka Cozy | Cek & Scan Koleksi Buku Perpustakaan</title>
   
+  <!-- SEO & Social Meta Tags -->
+  <meta name="description" content="Pustaka Cozy - Aplikasi perpustakaan web untuk cek ketersediaan buku, scan barcode ISBN otomatis, ekstraksi cover OCR, dan pencarian cepat koleksi buku.">
+  <meta name="theme-color" content="#874b28">
+  <meta property="og:title" content="Pustaka Cozy | Cek & Scan Koleksi Buku Perpustakaan">
+  <meta property="og:description" content="Cek ketersediaan buku dan scan barcode ratusan buku perpustakaan secara otomatis dan cepat.">
+  <meta property="og:type" content="website">
+  
+  <!-- Inline SVG Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23874b28' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z'/><path d='M6 6h10'/><path d='M6 10h10'/></svg>">
+
   <!-- Google Fonts: Plus Jakarta Sans & Playfair Display -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  
-  <!-- HTML5 QR Code / Barcode Scanner Library -->
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  
-  <!-- Tesseract.js for OCR (Scan text cover buku tanpa ISBN) -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  
-  <!-- Canvas Confetti -->
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+  <!-- Non-blocking scripts with defer -->
+  <script defer src="https://unpkg.com/lucide@latest"></script>
+  <script defer src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- Skip link for accessibility keyboard users -->
+  <a href="#mainContent" class="skip-to-content">Lewati ke konten utama</a>
+
   <!-- Ambient background glow elements -->
-  <div class="ambient-glow glow-1"></div>
-  <div class="ambient-glow glow-2"></div>
+  <div class="ambient-glow glow-1" aria-hidden="true"></div>
+  <div class="ambient-glow glow-2" aria-hidden="true"></div>
 
   <!-- Header / Navbar -->
   <header class="navbar">
     <div class="nav-container">
       <div class="brand">
-        <div class="brand-icon">
+        <div class="brand-icon" aria-hidden="true">
           <i data-lucide="book-marked"></i>
         </div>
         <div class="brand-text">
-          <h1>Perpustakaan Jupul nih bos</h1>
+          <h1>Pustaka Cozy</h1>
           <p class="tagline">Katalog & Pemeriksa Ketersediaan Buku</p>
         </div>
       </div>
 
       <div class="nav-actions">
-        <button id="btnOpenScanner" class="btn btn-primary">
-          <i data-lucide="scan-barcode"></i>
+        <!-- Interactive Sound Toggle -->
+        <button id="btnSoundToggle" class="btn btn-ghost" title="Nyalakan/Matikan Suara" aria-label="Toggle efek suara">
+          <i data-lucide="volume-2" id="soundIcon" aria-hidden="true"></i>
+        </button>
+
+        <!-- Admin Access Badge / Trigger -->
+        <button id="btnAdminAccess" class="btn btn-auth-status" title="Akses Pustakawan">
+          <i data-lucide="shield-alert" id="adminIcon" aria-hidden="true"></i>
+          <span id="adminStatusText">Mode Pengunjung</span>
+        </button>
+
+        <button id="btnOpenScanner" class="btn btn-primary" aria-label="Buka scanner dan tambah buku">
+          <i data-lucide="scan-barcode" aria-hidden="true"></i>
           <span>Scan / Tambah Buku</span>
         </button>
-        <button id="btnOpenBackup" class="btn btn-secondary" title="Cadangkan / Ekspor Data">
-          <i data-lucide="hard-drive-download"></i>
+
+        <button id="btnOpenBackup" class="btn btn-secondary" title="Cadangkan / Ekspor Data" aria-label="Buka manajemen data dan cadangan">
+          <i data-lucide="hard-drive-download" aria-hidden="true"></i>
           <span class="desktop-only">Data & Cadangan</span>
         </button>
       </div>
@@ -56,34 +75,36 @@
   </header>
 
   <!-- Main Container -->
-  <main class="main-content">
+  <main class="main-content" id="mainContent">
     
     <!-- Hero / Search Section -->
-    <section class="hero-section">
+    <section class="hero-section" aria-label="Pencarian Buku">
       <div class="hero-badge">
-        <i data-lucide="sparkles"></i>
+        <i data-lucide="sparkles" aria-hidden="true"></i>
         <span>Pencarian Cepat & Scan Otomatis</span>
       </div>
       <h2 class="hero-title">Cek Ketersediaan Buku Perpustakaan</h2>
       <p class="hero-subtitle">Cari judul, penulis, ISBN, atau scan barcode buku untuk melihat ketersediaan dalam koleksi perpustakaan.</p>
 
       <!-- Search Box Component -->
-      <div class="search-wrapper">
+      <div class="search-wrapper" role="search">
         <div class="search-input-box">
-          <i data-lucide="search" class="search-icon"></i>
+          <label for="searchInput" class="sr-only">Cari buku perpustakaan</label>
+          <i data-lucide="search" class="search-icon" aria-hidden="true"></i>
           <input 
             type="text" 
             id="searchInput" 
             placeholder="Ketik judul buku, nama penulis, kategori, atau nomor ISBN..." 
             autocomplete="off"
             spellcheck="false"
+            aria-label="Cari buku berdasarkan judul, penulis, kategori, atau ISBN"
           >
-          <button id="clearSearchBtn" class="clear-search-btn" title="Hapus pencarian" style="display: none;">
-            <i data-lucide="x"></i>
+          <button id="clearSearchBtn" class="clear-search-btn" title="Hapus pencarian" aria-label="Hapus teks pencarian" style="display: none;">
+            <i data-lucide="x" aria-hidden="true"></i>
           </button>
         </div>
-        <button id="heroScanTrigger" class="btn btn-accent" title="Scan Barcode Kamera">
-          <i data-lucide="camera"></i>
+        <button id="heroScanTrigger" class="btn btn-accent" title="Scan Barcode Kamera" aria-label="Buka pemindai kamera barcode langsung">
+          <i data-lucide="camera" aria-hidden="true"></i>
           <span class="desktop-only">Scan Langsung</span>
         </button>
       </div>
@@ -186,33 +207,33 @@
   </main>
 
   <!-- ==================== MODAL: SCANNER & ADD BOOK ==================== -->
-  <div class="modal-backdrop" id="scannerModal">
+  <div class="modal-backdrop" id="scannerModal" role="dialog" aria-modal="true" aria-labelledby="scannerModalTitle">
     <div class="modal-card modal-lg">
       <div class="modal-header">
         <div class="modal-title-wrap">
-          <i data-lucide="scan-line" class="modal-icon"></i>
+          <i data-lucide="scan-line" class="modal-icon" aria-hidden="true"></i>
           <div>
-            <h3>Scan & Tambah Buku</h3>
+            <h3 id="scannerModalTitle">Scan & Tambah Buku</h3>
             <p>Pilih metode pemindaian untuk mengambil judul & penulis otomatis.</p>
           </div>
         </div>
-        <button class="btn-close" id="btnCloseScanner">
-          <i data-lucide="x"></i>
+        <button class="btn-close" id="btnCloseScanner" aria-label="Tutup jendela scanner">
+          <i data-lucide="x" aria-hidden="true"></i>
         </button>
       </div>
 
       <!-- Scanner Tabs -->
-      <div class="modal-tabs">
-        <button class="tab-btn active" data-tab="tab-barcode">
-          <i data-lucide="barcode"></i>
+      <div class="modal-tabs" role="tablist">
+        <button class="tab-btn active" data-tab="tab-barcode" role="tab" aria-selected="true" id="tabBtnBarcode">
+          <i data-lucide="barcode" aria-hidden="true"></i>
           <span>1. Scan Barcode / ISBN</span>
         </button>
-        <button class="tab-btn" data-tab="tab-ocr">
-          <i data-lucide="text-search"></i>
+        <button class="tab-btn" data-tab="tab-ocr" role="tab" aria-selected="false" id="tabBtnOcr">
+          <i data-lucide="text-search" aria-hidden="true"></i>
           <span>2. Scan Teks Cover (OCR)</span>
         </button>
-        <button class="tab-btn" data-tab="tab-manual">
-          <i data-lucide="pen-tool"></i>
+        <button class="tab-btn" data-tab="tab-manual" role="tab" aria-selected="false" id="tabBtnManual">
+          <i data-lucide="pen-tool" aria-hidden="true"></i>
           <span>3. Ketik ISBN / Manual</span>
         </button>
       </div>
@@ -220,21 +241,21 @@
       <div class="modal-body">
         
         <!-- Tab 1: Barcode / ISBN Camera Scanner -->
-        <div class="tab-content active" id="tab-barcode">
+        <div class="tab-content active" id="tab-barcode" role="tabpanel" aria-labelledby="tabBtnBarcode">
           <div class="scanner-notice">
-            <i data-lucide="info"></i>
+            <i data-lucide="info" aria-hidden="true"></i>
             <span>Arahkan kamera ke <strong>barcode ISBN</strong> di belakang buku. Judul & penulis akan ditarik otomatis dari Google Books & OpenLibrary.</span>
           </div>
 
           <div class="camera-viewport-wrap">
             <div id="barcodeReader" class="camera-reader"></div>
-            <div class="scanner-laser" id="scannerLaser"></div>
+            <div class="scanner-laser" id="scannerLaser" aria-hidden="true"></div>
           </div>
 
           <!-- Camera Controls -->
           <div class="scanner-footer-controls">
             <div class="camera-select-wrap">
-              <label><i data-lucide="video"></i> Pilih Kamera:</label>
+              <label for="cameraSelection"><i data-lucide="video" aria-hidden="true"></i> Pilih Kamera:</label>
               <select id="cameraSelection"></select>
             </div>
             <div class="scanner-options">
@@ -248,30 +269,30 @@
         </div>
 
         <!-- Tab 2: OCR Cover Scanner (When book has NO ISBN) -->
-        <div class="tab-content" id="tab-ocr">
+        <div class="tab-content" id="tab-ocr" role="tabpanel" aria-labelledby="tabBtnOcr">
           <div class="scanner-notice">
-            <i data-lucide="file-text"></i>
+            <i data-lucide="file-text" aria-hidden="true"></i>
             <span>Untuk buku kuno atau tanpa ISBN: Foto cover depan buku. OCR Tesseract akan mengekstrak judul dan penulis secara otomatis.</span>
           </div>
 
           <div class="ocr-upload-area" id="ocrDropArea">
-            <i data-lucide="upload-cloud" class="ocr-icon"></i>
+            <i data-lucide="upload-cloud" class="ocr-icon" aria-hidden="true"></i>
             <h4>Unggah Foto Cover atau Ambil dari Kamera</h4>
             <p>Klik untuk memilih file foto sampul buku (JPG / PNG)</p>
             <input type="file" id="ocrFileInput" accept="image/*" style="display: none;">
             <div class="ocr-buttons">
               <button class="btn btn-secondary" id="btnTriggerOcrFile">
-                <i data-lucide="image"></i> Pilih Gambar Cover
+                <i data-lucide="image" aria-hidden="true"></i> Pilih Gambar Cover
               </button>
               <button class="btn btn-outline" id="btnOcrCameraSnap">
-                <i data-lucide="camera"></i> Potret dengan Kamera
+                <i data-lucide="camera" aria-hidden="true"></i> Potret dengan Kamera
               </button>
             </div>
           </div>
 
           <!-- OCR Preview & Live Processing Indicator -->
           <div id="ocrProcessingState" class="ocr-processing" style="display: none;">
-            <div class="spinner"></div>
+            <div class="spinner" aria-hidden="true"></div>
             <p id="ocrStatusMsg">Membaca teks dari sampul buku...</p>
             <div class="ocr-progress-bar">
               <div class="ocr-progress-fill" id="ocrProgressFill"></div>
@@ -279,19 +300,19 @@
           </div>
 
           <div id="ocrPreviewWrap" class="ocr-preview-wrap" style="display: none;">
-            <img id="ocrPreviewImg" alt="Preview Cover">
+            <img id="ocrPreviewImg" alt="Pratinjau Cover Buku">
             <div class="ocr-extracted-text">
-              <label>Teks Terdeteksi:</label>
+              <label for="ocrExtractedRaw">Teks Terdeteksi:</label>
               <textarea id="ocrExtractedRaw" rows="3" readonly></textarea>
               <button class="btn btn-sm btn-primary" id="btnUseOcrText">
-                <i data-lucide="check"></i> Terapkan ke Form Buku
+                <i data-lucide="check" aria-hidden="true"></i> Terapkan ke Form Buku
               </button>
             </div>
           </div>
         </div>
 
         <!-- Tab 3: Manual ISBN / Direct Lookup -->
-        <div class="tab-content" id="tab-manual">
+        <div class="tab-content" id="tab-manual" role="tabpanel" aria-labelledby="tabBtnManual">
           <div class="manual-isbn-search">
             <label for="manualIsbnInput">Masukkan 10 atau 13 Digit Angka ISBN:</label>
             <div class="input-with-button">
@@ -301,7 +322,7 @@
                 placeholder="Contoh: 9786020633176 atau 9789792219081"
               >
               <button class="btn btn-primary" id="btnLookupIsbn">
-                <i data-lucide="search"></i> Cari Data Buku
+                <i data-lucide="search" aria-hidden="true"></i> Cari Data Buku
               </button>
             </div>
             <p class="field-hint">Gunakan input ini jika Anda memakai Handheld Barcode Scanner USB fisik (cukup colok scanner lalu scan barcode ke kolom input ini).</p>
@@ -313,18 +334,18 @@
   </div>
 
   <!-- ==================== MODAL: BOOK FORM / CONFIRMATION ==================== -->
-  <div class="modal-backdrop" id="bookFormModal">
+  <div class="modal-backdrop" id="bookFormModal" role="dialog" aria-modal="true" aria-labelledby="bookFormTitle">
     <div class="modal-card">
       <div class="modal-header">
         <div class="modal-title-wrap">
-          <i data-lucide="bookmark-plus" class="modal-icon"></i>
+          <i data-lucide="bookmark-plus" class="modal-icon" aria-hidden="true"></i>
           <div>
             <h3 id="bookFormTitle">Konfirmasi Data Buku</h3>
             <p>Periksa detail judul, penulis, dan kategori sebelum disimpan ke perpustakaan.</p>
           </div>
         </div>
-        <button class="btn-close" id="btnCloseBookForm">
-          <i data-lucide="x"></i>
+        <button class="btn-close" id="btnCloseBookForm" aria-label="Tutup form buku">
+          <i data-lucide="x" aria-hidden="true"></i>
         </button>
       </div>
 
@@ -392,6 +413,21 @@
               <label for="formDescription">Deskripsi / Catatan Singkat (Opsional):</label>
               <textarea id="formDescription" rows="2" placeholder="Sinopsis singkat atau lokasi rak buku..."></textarea>
             </div>
+
+            <!-- E-Book Options -->
+            <div class="form-group ebook-settings-box">
+              <label class="toggle-control">
+                <input type="checkbox" id="formHasEbook">
+                <span class="toggle-slider"></span>
+                <span class="toggle-text"><strong>Tersedia Versi E-Book Digital</strong></span>
+              </label>
+              
+              <div class="ebook-url-wrap" id="ebookUrlWrap" style="display: none; margin-top: 0.65rem;">
+                <label for="formEbookUrl">Link Toko Pembelian E-Book:</label>
+                <input type="url" id="formEbookUrl" placeholder="Contoh: https://play.google.com/store/books/details/...">
+                <p class="field-hint">Kosongkan jika ingin sistem membuat link pencarian otomatis ke Google Play Books / Gramedia berdasarkan judul & ISBN.</p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -407,18 +443,18 @@
   </div>
 
   <!-- ==================== MODAL: BOOK DETAILS VIEW ==================== -->
-  <div class="modal-backdrop" id="bookDetailsModal">
+  <div class="modal-backdrop" id="bookDetailsModal" role="dialog" aria-modal="true" aria-labelledby="bookDetailsTitle">
     <div class="modal-card">
       <div class="modal-header">
         <div class="modal-title-wrap">
-          <i data-lucide="book-open" class="modal-icon"></i>
+          <i data-lucide="book-open" class="modal-icon" aria-hidden="true"></i>
           <div>
-            <h3>Detail Buku Perpustakaan</h3>
+            <h3 id="bookDetailsTitle">Detail Buku Perpustakaan</h3>
             <p>Status ketersediaan dan informasi lengkap buku.</p>
           </div>
         </div>
-        <button class="btn-close" id="btnCloseDetails">
-          <i data-lucide="x"></i>
+        <button class="btn-close" id="btnCloseDetails" aria-label="Tutup detail buku">
+          <i data-lucide="x" aria-hidden="true"></i>
         </button>
       </div>
 
@@ -433,18 +469,18 @@
   </div>
 
   <!-- ==================== MODAL: BACKUP & DATA MANAGEMENT ==================== -->
-  <div class="modal-backdrop" id="backupModal">
+  <div class="modal-backdrop" id="backupModal" role="dialog" aria-modal="true" aria-labelledby="backupModalTitle">
     <div class="modal-card">
       <div class="modal-header">
         <div class="modal-title-wrap">
-          <i data-lucide="database" class="modal-icon"></i>
+          <i data-lucide="database" class="modal-icon" aria-hidden="true"></i>
           <div>
-            <h3>Cadangan & Manajemen Data</h3>
+            <h3 id="backupModalTitle">Cadangan & Manajemen Data</h3>
             <p>Ekspor dan impor data ratusan buku agar aman tersimpan.</p>
           </div>
         </div>
-        <button class="btn-close" id="btnCloseBackup">
-          <i data-lucide="x"></i>
+        <button class="btn-close" id="btnCloseBackup" aria-label="Tutup cadangan data">
+          <i data-lucide="x" aria-hidden="true"></i>
         </button>
       </div>
 
@@ -486,6 +522,85 @@
           <button class="btn btn-danger" id="btnClearAllBooks">
             <i data-lucide="trash-2"></i> Hapus Semua Data Buku
           </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: ADMIN ACCESS AUTHENTICATION ==================== -->
+  <div class="modal-backdrop" id="adminAuthModal" role="dialog" aria-modal="true" aria-labelledby="adminAuthTitle">
+    <div class="modal-card modal-sm">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <i data-lucide="shield-lock" class="modal-icon" aria-hidden="true"></i>
+          <div>
+            <h3 id="adminAuthTitle">Otorisasi Pustakawan</h3>
+            <p>Hanya pemilik perpustakaan yang memiliki akses menginput buku.</p>
+          </div>
+        </div>
+        <button class="btn-close" id="btnCloseAdminAuth" aria-label="Tutup otorisasi">
+          <i data-lucide="x" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <!-- State: Not Authenticated (Login) -->
+      <div id="adminLoginState" class="modal-body auth-body">
+        <div class="auth-icon-wrap">
+          <i data-lucide="key-round" class="auth-icon" aria-hidden="true"></i>
+        </div>
+        <h4>Masukkan PIN Akses Admin</h4>
+        <p class="auth-description">Akses scan, edit, dan penambahan buku dilindungi. Masukkan PIN untuk membuka wewenang pustakawan.</p>
+
+        <form id="adminPinForm" class="auth-form">
+          <div class="pin-input-group">
+            <input 
+              type="password" 
+              id="adminPinInput" 
+              maxlength="8" 
+              placeholder="••••" 
+              autocomplete="current-password"
+              inputmode="numeric"
+              required
+            >
+          </div>
+          <p id="pinErrorMessage" class="pin-error-text" style="display: none;"></p>
+          <button type="submit" class="btn btn-primary btn-block">
+            <i data-lucide="unlock" aria-hidden="true"></i> Buka Akses Pustakawan
+          </button>
+        </form>
+
+        <div class="auth-hint-box">
+          <i data-lucide="info" aria-hidden="true"></i>
+          <span>PIN bawaan pertama kali: <strong>1945</strong>. Anda dapat menggantinya sesuai keinginan setelah membuka akses.</span>
+        </div>
+      </div>
+
+      <!-- State: Authenticated (Manage Access & Settings) -->
+      <div id="adminManageState" class="modal-body auth-body" style="display: none;">
+        <div class="auth-badge-active">
+          <i data-lucide="shield-check" aria-hidden="true"></i>
+          <span>Akses Pustakawan Aktif</span>
+        </div>
+        <h4>Pengaturan Hak Akses</h4>
+        <p class="auth-description">Anda sedang dalam mode Admin. Anda bebas melakukan scan buku baru, mengedit, dan mengunduh cadangan data.</p>
+
+        <div class="admin-action-cards">
+          <div class="auth-card-item">
+            <h5>Ubah PIN Akses</h5>
+            <p>Ganti PIN keamanan agar hanya Anda atau staf terpercaya yang tahu.</p>
+            <form id="changePinForm" class="change-pin-form">
+              <input type="password" id="newPinInput" placeholder="Masukkan PIN baru" maxlength="8" required>
+              <button type="submit" class="btn btn-secondary btn-sm">Simpan PIN Baru</button>
+            </form>
+          </div>
+
+          <div class="auth-card-item logout-card">
+            <h5>Kunci Kembali (Mode Pengunjung)</h5>
+            <p>Kembalikan tampilan ke mode pengunjung agar orang lain hanya bisa mengecek buku.</p>
+            <button id="btnLockAdmin" class="btn btn-danger btn-block">
+              <i data-lucide="lock" aria-hidden="true"></i> Kunci Akses Sekarang
+            </button>
+          </div>
         </div>
       </div>
     </div>

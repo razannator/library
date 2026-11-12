@@ -14,6 +14,10 @@
 // 1. STATE & CONSTANTS
 // ==========================================
 const STORAGE_KEY = 'cozy_library_books_v1';
+const PIN_KEY = 'cozy_library_admin_pin_v1';
+const SESSION_AUTH_KEY = 'cozy_library_auth_admin_v1';
+const DEFAULT_PIN = '1945';
+
 let books = [];
 let html5QrCode = null;
 let currentCameraId = null;
@@ -22,6 +26,10 @@ let activeCategory = 'all';
 let currentSearchTerm = '';
 let currentSort = 'newest';
 let isBulkMode = false;
+
+// Admin & Sound States
+let isAdmin = sessionStorage.getItem(SESSION_AUTH_KEY) === 'true';
+let isSoundEnabled = localStorage.getItem('cozy_sound_enabled') !== 'false';
 
 // Audio context for barcode beep synthesis
 let audioCtx = null;
@@ -37,6 +45,8 @@ const DEMO_BOOKS = [
     cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80',
     description: 'Kisah roman sejarah berlatar era kolonial Hindia Belanda tentang perjuangan Minke dan Annelies.',
     status: 'Tersedia',
+    hasEbook: true,
+    ebookUrl: 'https://play.google.com/store/books/details?id=qY6wDwAAQBAJ',
     createdAt: new Date().toISOString()
   },
   {
@@ -48,6 +58,8 @@ const DEMO_BOOKS = [
     cover: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=400&q=80',
     description: 'Panduan praktis membentuk kebiasaan baik dan menghilangkan kebiasaan buruk secara bertahap.',
     status: 'Tersedia',
+    hasEbook: true,
+    ebookUrl: 'https://play.google.com/store/books/details?id=v-t0DwAAQBAJ',
     createdAt: new Date().toISOString()
   },
   {
@@ -59,9 +71,13 @@ const DEMO_BOOKS = [
     cover: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=400&q=80',
     description: 'Penjelajahan komprehensif perjalanan evolusi Homo sapiens dari zaman batu hingga modern.',
     status: 'Tersedia',
+    hasEbook: false,
+    ebookUrl: '',
     createdAt: new Date().toISOString()
   }
 ];
+
+let filterOnlyEbook = false;
 
 // ==========================================
 // 2. DOM ELEMENTS
@@ -84,6 +100,23 @@ const scannerModal = document.getElementById('scannerModal');
 const bookFormModal = document.getElementById('bookFormModal');
 const bookDetailsModal = document.getElementById('bookDetailsModal');
 const backupModal = document.getElementById('backupModal');
+const adminAuthModal = document.getElementById('adminAuthModal');
+
+// Admin Auth Elements
+const btnAdminAccess = document.getElementById('btnAdminAccess');
+const adminStatusText = document.getElementById('adminStatusText');
+const adminIcon = document.getElementById('adminIcon');
+const btnSoundToggle = document.getElementById('btnSoundToggle');
+const soundIcon = document.getElementById('soundIcon');
+const adminLoginState = document.getElementById('adminLoginState');
+const adminManageState = document.getElementById('adminManageState');
+const adminPinForm = document.getElementById('adminPinForm');
+const adminPinInput = document.getElementById('adminPinInput');
+const pinErrorMessage = document.getElementById('pinErrorMessage');
+const changePinForm = document.getElementById('changePinForm');
+const newPinInput = document.getElementById('newPinInput');
+const btnLockAdmin = document.getElementById('btnLockAdmin');
+const btnCloseAdminAuth = document.getElementById('btnCloseAdminAuth');
 
 // Form Elements
 const bookForm = document.getElementById('bookForm');
@@ -97,20 +130,149 @@ const coverLocalInput = document.getElementById('coverLocalInput');
 const formCoverPreview = document.getElementById('formCoverPreview');
 const formCoverPlaceholder = document.getElementById('formCoverPlaceholder');
 const editBookId = document.getElementById('editBookId');
+const formHasEbook = document.getElementById('formHasEbook');
+const formEbookUrl = document.getElementById('formEbookUrl');
+const ebookUrlWrap = document.getElementById('ebookUrlWrap');
 
 // ==========================================
 // 3. INITIALIZATION
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
   loadBooksFromStorage();
+  initSoundUI();
+  updateAdminUI();
   initLucideIcons();
   setupEventListeners();
   renderApp();
 });
 
+function initSoundUI() {
+  if (soundIcon) {
+    soundIcon.setAttribute('data-lucide', isSoundEnabled ? 'volume-2' : 'volume-x');
+  }
+}
+
+function toggleSound() {
+  isSoundEnabled = !isSoundEnabled;
+  localStorage.setItem('cozy_sound_enabled', isSoundEnabled);
+  initSoundUI();
+  initLucideIcons();
+  if (isSoundEnabled) {
+    playBeepSound(660);
+    showToast('Efek suara diaktifkan', 'info');
+  } else {
+    showToast('Efek suara dinonaktifkan', 'info');
+  }
+}
+
+// ==========================================
+// ADMIN AUTHENTICATION & ACCESS CONTROL
+// ==========================================
+function getStoredPin() {
+  return localStorage.getItem(PIN_KEY) || DEFAULT_PIN;
+}
+
+function setStoredPin(newPin) {
+  localStorage.setItem(PIN_KEY, newPin);
+}
+
+function updateAdminUI() {
+  if (isAdmin) {
+    btnAdminAccess.classList.add('admin-active');
+    adminStatusText.textContent = 'Akses Pustakawan Aktif';
+    adminIcon.setAttribute('data-lucide', 'shield-check');
+  } else {
+    btnAdminAccess.classList.remove('admin-active');
+    adminStatusText.textContent = 'Mode Pengunjung';
+    adminIcon.setAttribute('data-lucide', 'shield-alert');
+  }
+  initLucideIcons();
+}
+
+function openAdminAuthModal() {
+  pinErrorMessage.style.display = 'none';
+  adminPinInput.value = '';
+  
+  if (isAdmin) {
+    adminLoginState.style.display = 'none';
+    adminManageState.style.display = 'block';
+  } else {
+    adminLoginState.style.display = 'block';
+    adminManageState.style.display = 'none';
+    setTimeout(() => adminPinInput.focus(), 150);
+  }
+  openModal(adminAuthModal);
+  initLucideIcons();
+}
+
+function requireAdmin(actionCallback) {
+  if (isAdmin) {
+    actionCallback();
+  } else {
+    showToast('Akses dibatasi: Hanya pemilik perpustakaan yang dapat menginput atau mengedit buku.', 'error');
+    openAdminAuthModal();
+  }
+}
+
+function handlePinSubmit(e) {
+  e.preventDefault();
+  const enteredPin = adminPinInput.value.trim();
+  const correctPin = getStoredPin();
+
+  if (enteredPin === correctPin) {
+    isAdmin = true;
+    sessionStorage.setItem(SESSION_AUTH_KEY, 'true');
+    pinErrorMessage.style.display = 'none';
+    updateAdminUI();
+    closeModal(adminAuthModal);
+    playSuccessChime();
+    fireConfetti();
+    showToast('Otorisasi Berhasil! Akses pustakawan sekarang terbuka.', 'success');
+    renderBooksList();
+  } else {
+    adminPinInput.classList.add('shake');
+    pinErrorMessage.textContent = 'PIN salah! Silakan coba lagi.';
+    pinErrorMessage.style.display = 'block';
+    playErrorSound();
+    setTimeout(() => adminPinInput.classList.remove('shake'), 400);
+    adminPinInput.value = '';
+    adminPinInput.focus();
+  }
+}
+
+function handleChangePinSubmit(e) {
+  e.preventDefault();
+  const newPin = newPinInput.value.trim();
+  if (newPin.length < 4) {
+    showToast('PIN minimal terdiri dari 4 digit angka!', 'error');
+    return;
+  }
+  setStoredPin(newPin);
+  newPinInput.value = '';
+  showToast('PIN keamanan baru berhasil disimpan!', 'success');
+  playBeepSound(880);
+}
+
+function handleLockAdmin() {
+  isAdmin = false;
+  sessionStorage.removeItem(SESSION_AUTH_KEY);
+  updateAdminUI();
+  closeModal(adminAuthModal);
+  renderBooksList();
+  showToast('Akses dikunci kembali ke Mode Pengunjung.', 'info');
+  playBeepSound(440);
+}
+
 function initLucideIcons() {
-  if (window.lucide) {
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
     window.lucide.createIcons();
+  } else {
+    // Retry shortly if script is deferred
+    setTimeout(() => {
+      if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+      }
+    }, 150);
   }
 }
 
@@ -165,17 +327,22 @@ function updateStats() {
 
 function renderCategoryChips() {
   const categories = Array.from(new Set(books.map(b => b.category?.trim()).filter(Boolean))).sort();
+  const ebookCount = books.filter(b => b.hasEbook).length;
 
   let html = `
-    <button class="chip ${activeCategory === 'all' ? 'active' : ''}" data-category="all">
+    <button class="chip ${activeCategory === 'all' && !filterOnlyEbook ? 'active' : ''}" data-category="all">
       Semua Kategori (${books.length})
+    </button>
+    <button class="chip chip-special ${filterOnlyEbook ? 'active' : ''}" id="btnFilterEbook">
+      <i data-lucide="tablet" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;" aria-hidden="true"></i>
+      Tersedia E-Book (${ebookCount})
     </button>
   `;
 
   categories.forEach(cat => {
     const count = books.filter(b => b.category?.trim() === cat).length;
     html += `
-      <button class="chip ${activeCategory === cat ? 'active' : ''}" data-category="${escapeHtml(cat)}">
+      <button class="chip ${activeCategory === cat && !filterOnlyEbook ? 'active' : ''}" data-category="${escapeHtml(cat)}">
         ${escapeHtml(cat)} (${count})
       </button>
     `;
@@ -183,17 +350,35 @@ function renderCategoryChips() {
 
   categoryChips.innerHTML = html;
 
-  // Add click handlers
-  categoryChips.querySelectorAll('.chip').forEach(chip => {
+  // Add click handlers for categories
+  categoryChips.querySelectorAll('.chip[data-category]').forEach(chip => {
     chip.addEventListener('click', () => {
       activeCategory = chip.dataset.category;
+      filterOnlyEbook = false;
       renderApp();
     });
   });
+
+  // E-Book filter button
+  const btnFilterEbook = document.getElementById('btnFilterEbook');
+  if (btnFilterEbook) {
+    btnFilterEbook.addEventListener('click', () => {
+      filterOnlyEbook = !filterOnlyEbook;
+      if (filterOnlyEbook) {
+        activeCategory = 'all';
+      }
+      renderApp();
+    });
+  }
 }
 
 function getFilteredAndSortedBooks() {
   let filtered = [...books];
+
+  // E-Book exclusive filter
+  if (filterOnlyEbook) {
+    filtered = filtered.filter(b => b.hasEbook);
+  }
 
   // Category filter
   if (activeCategory !== 'all') {
@@ -229,6 +414,16 @@ function getFilteredAndSortedBooks() {
   return filtered;
 }
 
+function highlightMatch(text, query) {
+  if (!text) return '';
+  const safeText = escapeHtml(text);
+  if (!query || !query.trim()) return safeText;
+  
+  const cleanQuery = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${cleanQuery})`, 'gi');
+  return safeText.replace(regex, '<mark class="search-highlight">$1</mark>');
+}
+
 function renderBooksList() {
   const filtered = getFilteredAndSortedBooks();
   resultsCountBadge.textContent = `${filtered.length} buku`;
@@ -245,7 +440,7 @@ function renderBooksList() {
     booksGrid.style.display = 'none';
     emptyState.style.display = 'block';
     document.getElementById('emptyStateTitle').textContent = 'Buku Tidak Ditemukan';
-    document.getElementById('emptyStateMsg').textContent = `Tidak ada koleksi buku yang cocok dengan pencarian "${escapeHtml(currentSearchTerm)}".`;
+    document.getElementById('emptyStateMsg').textContent = `Tidak ada koleksi buku yang cocok dengan pencarian "${currentSearchTerm}".`;
     return;
   }
 
@@ -254,41 +449,53 @@ function renderBooksList() {
 
   booksGrid.innerHTML = filtered.map(book => {
     const coverHtml = book.cover ? `
-      <img src="${escapeHtml(book.cover)}" alt="${escapeHtml(book.title)}" class="book-cover-img" onerror="this.onerror=null; this.parentElement.innerHTML='${getSpineFallbackHtml(book)}'">
+      <img src="${escapeHtml(book.cover)}" alt="Sampul buku ${escapeHtml(book.title)}" class="book-cover-img" loading="lazy" width="125" height="175" onerror="this.onerror=null; this.parentElement.innerHTML='${getSpineFallbackHtml(book)}'">
     ` : getSpineFallbackHtml(book);
+
+    const adminActionsHtml = isAdmin ? `
+      <button class="btn btn-outline btn-sm btn-edit-book" data-id="${book.id}" title="Edit Buku" aria-label="Edit buku ${escapeHtml(book.title)}">
+        <i data-lucide="edit-3" aria-hidden="true"></i>
+      </button>
+      <button class="btn btn-danger btn-sm btn-delete-book" data-id="${book.id}" title="Hapus Buku" aria-label="Hapus buku ${escapeHtml(book.title)}">
+        <i data-lucide="trash-2" aria-hidden="true"></i>
+      </button>
+    ` : '';
 
     return `
       <article class="book-card" data-id="${book.id}">
         <div class="book-cover-container">
           ${coverHtml}
-          <div class="status-badge available" title="Tersedia di perpustakaan">
-            <span class="status-dot"></span>
-            <span>Tersedia</span>
+          <div class="badges-stack">
+            <div class="status-badge available" title="Tersedia di koleksi fisik perpustakaan">
+              <span class="status-dot" aria-hidden="true"></span>
+              <span>Tersedia</span>
+            </div>
+            ${book.hasEbook ? `
+              <div class="status-badge ebook-available" title="Versi digital e-book tersedia">
+                <i data-lucide="tablet" style="width: 12px; height: 12px;" aria-hidden="true"></i>
+                <span>E-Book</span>
+              </div>
+            ` : ''}
           </div>
         </div>
 
         <div class="book-content">
           <span class="book-category-tag">${escapeHtml(book.category || 'Umum')}</span>
-          <h4 class="book-title" title="${escapeHtml(book.title)}">${escapeHtml(book.title)}</h4>
-          <p class="book-author">${escapeHtml(book.author || 'Penulis Tidak Diketahui')}</p>
+          <h4 class="book-title" title="${escapeHtml(book.title)}">${highlightMatch(book.title, currentSearchTerm)}</h4>
+          <p class="book-author">${highlightMatch(book.author || 'Penulis Tidak Diketahui', currentSearchTerm)}</p>
 
           <div class="book-meta">
             <span class="book-isbn-text">
-              <i data-lucide="barcode" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></i>
-              ${book.isbn ? escapeHtml(book.isbn) : 'Tanpa ISBN'}
+              <i data-lucide="barcode" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;" aria-hidden="true"></i>
+              ${book.isbn ? highlightMatch(book.isbn, currentSearchTerm) : 'Tanpa ISBN'}
             </span>
           </div>
 
           <div class="book-card-actions">
-            <button class="btn btn-secondary btn-sm btn-view-book" data-id="${book.id}">
-              <i data-lucide="eye"></i> Detail
+            <button class="btn btn-secondary btn-sm btn-view-book" data-id="${book.id}" aria-label="Lihat detail buku ${escapeHtml(book.title)}">
+              <i data-lucide="eye" aria-hidden="true"></i> Detail
             </button>
-            <button class="btn btn-outline btn-sm btn-edit-book" data-id="${book.id}" title="Edit Buku">
-              <i data-lucide="edit-3"></i>
-            </button>
-            <button class="btn btn-danger btn-sm btn-delete-book" data-id="${book.id}" title="Hapus Buku">
-              <i data-lucide="trash-2"></i>
-            </button>
+            ${adminActionsHtml}
           </div>
         </div>
       </article>
@@ -351,12 +558,18 @@ function renderRecommendations() {
   const recommendedBooks = books.filter(b => (b.category || 'Umum') === topCategory).slice(0, 4);
 
   recommendationCarousel.innerHTML = recommendedBooks.map(b => `
-    <div class="rec-mini-card" onclick="openBookDetails('${b.id}')">
+    <button class="rec-mini-card" type="button" data-id="${b.id}" aria-label="Lihat rekomendasi buku ${escapeHtml(b.title)}">
       <h5>${escapeHtml(b.title)}</h5>
-      <span><i data-lucide="user" style="width: 12px; height: 12px; display: inline-block;"></i> ${escapeHtml(b.author)}</span>
+      <span><i data-lucide="user" style="width: 12px; height: 12px; display: inline-block;" aria-hidden="true"></i> ${escapeHtml(b.author)}</span>
       <span style="margin-top: 0.4rem; color: var(--cozy-caramel); font-weight: 600;">Kategori: ${escapeHtml(b.category)}</span>
-    </div>
+    </button>
   `).join('');
+
+  recommendationCarousel.querySelectorAll('.rec-mini-card').forEach(card => {
+    card.addEventListener('click', () => {
+      openBookDetails(card.dataset.id);
+    });
+  });
 }
 
 // ==========================================
@@ -385,8 +598,8 @@ function setupEventListeners() {
   });
 
   // Modals Open / Close
-  document.getElementById('btnOpenScanner').addEventListener('click', openScannerModal);
-  document.getElementById('heroScanTrigger').addEventListener('click', openScannerModal);
+  document.getElementById('btnOpenScanner').addEventListener('click', () => requireAdmin(openScannerModal));
+  document.getElementById('heroScanTrigger').addEventListener('click', () => requireAdmin(openScannerModal));
   document.getElementById('btnCloseScanner').addEventListener('click', closeScannerModal);
 
   document.getElementById('btnOpenBackup').addEventListener('click', () => openModal(backupModal));
@@ -396,12 +609,21 @@ function setupEventListeners() {
   document.getElementById('btnCancelBookForm').addEventListener('click', () => closeModal(bookFormModal));
   document.getElementById('btnCloseDetails').addEventListener('click', () => closeModal(bookDetailsModal));
 
+  // Admin & Sound Event Listeners
+  if (btnSoundToggle) btnSoundToggle.addEventListener('click', toggleSound);
+  if (btnAdminAccess) btnAdminAccess.addEventListener('click', openAdminAuthModal);
+  if (btnCloseAdminAuth) btnCloseAdminAuth.addEventListener('click', () => closeModal(adminAuthModal));
+  if (adminPinForm) adminPinForm.addEventListener('submit', handlePinSubmit);
+  if (changePinForm) changePinForm.addEventListener('submit', handleChangePinSubmit);
+  if (btnLockAdmin) btnLockAdmin.addEventListener('click', handleLockAdmin);
+
   // Empty state buttons
-  document.getElementById('btnEmptyScan').addEventListener('click', openScannerModal);
-  document.getElementById('btnLoadDemo').addEventListener('click', loadDemoData);
+  document.getElementById('btnEmptyScan').addEventListener('click', () => requireAdmin(openScannerModal));
+  document.getElementById('btnLoadDemo').addEventListener('click', () => requireAdmin(loadDemoData));
 
   // Modal Backdrop click to close
-  [scannerModal, bookFormModal, bookDetailsModal, backupModal].forEach(modal => {
+  [scannerModal, bookFormModal, bookDetailsModal, backupModal, adminAuthModal].forEach(modal => {
+    if (!modal) return;
     modal.addEventListener('click', (e) => {
       if (e.target === modal) {
         if (modal === scannerModal) {
@@ -411,6 +633,20 @@ function setupEventListeners() {
         }
       }
     });
+  });
+
+  // Keyboard accessibility: Escape key closes active modals & turns off camera
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' || e.key === 'Esc') {
+      if (scannerModal.classList.contains('open')) {
+        closeScannerModal();
+      }
+      [bookFormModal, bookDetailsModal, backupModal, adminAuthModal].forEach(modal => {
+        if (modal && modal.classList.contains('open')) {
+          closeModal(modal);
+        }
+      });
+    }
   });
 
   // Scanner Modal Tabs
@@ -455,6 +691,16 @@ function setupEventListeners() {
 
   // Cover local file upload
   coverLocalInput.addEventListener('change', handleLocalCoverUpload);
+
+  // E-Book toggle in form
+  if (formHasEbook && ebookUrlWrap) {
+    formHasEbook.addEventListener('change', (e) => {
+      ebookUrlWrap.style.display = e.target.checked ? 'block' : 'none';
+      if (e.target.checked && formEbookUrl) {
+        formEbookUrl.focus();
+      }
+    });
+  }
 
   // Book Form Submit
   bookForm.addEventListener('submit', handleBookFormSubmit);
@@ -642,7 +888,9 @@ async function fetchBookMetadata(isbnRaw) {
     isbn: isbn,
     category: 'Fiksi & Sastra',
     cover: '',
-    description: ''
+    description: '',
+    hasEbook: false,
+    ebookUrl: ''
   };
 
   try {
@@ -652,7 +900,11 @@ async function fetchBookMetadata(isbnRaw) {
     if (gResponse.ok) {
       const gData = await gResponse.json();
       if (gData.totalItems > 0 && gData.items && gData.items.length > 0) {
-        const info = gData.items[0].volumeInfo;
+        const item = gData.items[0];
+        const info = item.volumeInfo || {};
+        const sale = item.saleInfo || {};
+        const access = item.accessInfo || {};
+
         metadata.title = info.title || '';
         metadata.author = (info.authors && info.authors.length > 0) ? info.authors.join(', ') : '';
         metadata.description = info.description || '';
@@ -666,6 +918,11 @@ async function fetchBookMetadata(isbnRaw) {
             metadata.cover = metadata.cover.replace('http://', 'https://');
           }
         }
+
+        // Auto-detect E-Book availability and purchase link
+        metadata.hasEbook = (sale.isEbook === true) || (access.epub && access.epub.isAvailable) || (access.pdf && access.pdf.isAvailable);
+        metadata.ebookUrl = sale.buyLink || info.infoLink || '';
+
         return metadata;
       }
     }
@@ -687,6 +944,10 @@ async function fetchBookMetadata(isbnRaw) {
         }
         if (info.subjects && info.subjects.length > 0) {
           metadata.category = mapCategoryName(info.subjects[0].name);
+        }
+        if (info.ebooks && info.ebooks.length > 0) {
+          metadata.hasEbook = true;
+          metadata.ebookUrl = info.ebooks[0].borrow_url || info.ebooks[0].read_url || '';
         }
         return metadata;
       }
@@ -864,6 +1125,14 @@ function parseOcrCoverText(rawText) {
   };
 }
 
+function getEbookBuyLink(book) {
+  if (book.ebookUrl && book.ebookUrl.startsWith('http')) {
+    return book.ebookUrl;
+  }
+  const query = encodeURIComponent(`${book.title || ''} ${book.isbn || book.author || ''}`.trim());
+  return `https://play.google.com/store/search?q=${query}&c=books`;
+}
+
 // ==========================================
 // 9. BOOK FORM / EDIT / DETAILS MODALS
 // ==========================================
@@ -876,6 +1145,16 @@ function openBookFormWithData(data = {}, isbnDefault = '') {
   formCategory.value = data.category || 'Fiksi & Sastra';
   formDescription.value = data.description || '';
   coverUrlInput.value = data.cover || '';
+
+  if (formHasEbook) {
+    formHasEbook.checked = !!data.hasEbook;
+    if (ebookUrlWrap) {
+      ebookUrlWrap.style.display = data.hasEbook ? 'block' : 'none';
+    }
+  }
+  if (formEbookUrl) {
+    formEbookUrl.value = data.ebookUrl || '';
+  }
 
   updateFormCoverPreview(data.cover || '');
   openModal(bookFormModal);
@@ -914,6 +1193,8 @@ function handleBookFormSubmit(e) {
   const category = formCategory.value.trim() || 'Umum';
   const description = formDescription.value.trim();
   const cover = coverUrlInput.value.trim();
+  const hasEbook = formHasEbook ? formHasEbook.checked : false;
+  const ebookUrl = formEbookUrl ? formEbookUrl.value.trim() : '';
   const id = editBookId.value;
 
   if (!title || !author) {
@@ -933,6 +1214,8 @@ function handleBookFormSubmit(e) {
         category,
         description,
         cover,
+        hasEbook,
+        ebookUrl,
         updatedAt: new Date().toISOString()
       };
       showToast('Data buku berhasil diperbarui!', 'success');
@@ -947,6 +1230,8 @@ function handleBookFormSubmit(e) {
       category,
       description,
       cover,
+      hasEbook,
+      ebookUrl,
       status: 'Tersedia',
       createdAt: new Date().toISOString()
     };
@@ -960,9 +1245,11 @@ function handleBookFormSubmit(e) {
 }
 
 function openBookEdit(bookId) {
-  const book = books.find(b => b.id === bookId);
-  if (!book) return;
-  openBookFormWithData(book);
+  requireAdmin(() => {
+    const book = books.find(b => b.id === bookId);
+    if (!book) return;
+    openBookFormWithData(book);
+  });
 }
 
 function openBookDetails(bookId) {
@@ -975,6 +1262,16 @@ function openBookDetails(bookId) {
   const coverHtml = book.cover ? `
     <img src="${escapeHtml(book.cover)}" alt="${escapeHtml(book.title)}" class="details-cover" onerror="this.onerror=null; this.parentElement.innerHTML='${getSpineFallbackHtml(book)}'">
   ` : getSpineFallbackHtml(book);
+
+  const ebookMetaStatusHtml = book.hasEbook ? `
+    <span class="meta-val" style="color: #4338ca; display: flex; align-items: center; gap: 5px;">
+      <i data-lucide="tablet" style="width: 14px; height: 14px;" aria-hidden="true"></i> Tersedia Digital
+    </span>
+  ` : `
+    <span class="meta-val" style="color: var(--text-muted); display: flex; align-items: center; gap: 5px;">
+      <i data-lucide="book" style="width: 14px; height: 14px;" aria-hidden="true"></i> Hanya Buku Fisik
+    </span>
+  `;
 
   content.innerHTML = `
     <div class="details-container">
@@ -995,14 +1292,14 @@ function openBookDetails(bookId) {
             <span class="meta-val">${escapeHtml(book.category || 'Umum')}</span>
           </div>
           <div class="meta-item">
-            <span class="meta-lbl">Status Ketersediaan</span>
+            <span class="meta-lbl">Ketersediaan Fisik</span>
             <span class="meta-val" style="color: var(--accent-secondary); display: flex; align-items: center; gap: 4px;">
               <span class="status-dot"></span> Tersedia di Perpustakaan
             </span>
           </div>
           <div class="meta-item">
-            <span class="meta-lbl">Waktu Terdata</span>
-            <span class="meta-val">${book.createdAt ? new Date(book.createdAt).toLocaleDateString('id-ID') : '-'}</span>
+            <span class="meta-lbl">Versi E-Book</span>
+            ${ebookMetaStatusHtml}
           </div>
         </div>
 
@@ -1011,11 +1308,22 @@ function openBookDetails(bookId) {
     </div>
   `;
 
-  footer.innerHTML = `
-    <button class="btn btn-secondary" onclick="closeModal(bookDetailsModal)">Tutup</button>
+  const buyEbookBtnHtml = book.hasEbook ? `
+    <a href="${getEbookBuyLink(book)}" target="_blank" rel="noopener noreferrer" class="btn btn-ebook-buy" title="Beli atau baca versi e-book di toko online">
+      <i data-lucide="shopping-bag" aria-hidden="true"></i> Beli E-Book ↗
+    </a>
+  ` : '';
+
+  const editBtnHtml = isAdmin ? `
     <button class="btn btn-primary" onclick="closeModal(bookDetailsModal); openBookEdit('${book.id}')">
       <i data-lucide="edit-3"></i> Edit Buku
     </button>
+  ` : '';
+
+  footer.innerHTML = `
+    <button class="btn btn-secondary" onclick="closeModal(bookDetailsModal)">Tutup</button>
+    ${buyEbookBtnHtml}
+    ${editBtnHtml}
   `;
 
   openModal(bookDetailsModal);
@@ -1023,14 +1331,17 @@ function openBookDetails(bookId) {
 }
 
 function confirmDeleteBook(bookId) {
-  const book = books.find(b => b.id === bookId);
-  if (!book) return;
+  requireAdmin(() => {
+    const book = books.find(b => b.id === bookId);
+    if (!book) return;
 
-  if (confirm(`Apakah Anda yakin ingin menghapus buku "${book.title}" dari perpustakaan?`)) {
-    books = books.filter(b => b.id !== bookId);
-    saveBooksToStorage();
-    showToast('Buku telah dihapus dari perpustakaan.', 'info');
-  }
+    if (confirm(`Apakah Anda yakin ingin menghapus buku "${book.title}" dari perpustakaan?`)) {
+      books = books.filter(b => b.id !== bookId);
+      saveBooksToStorage();
+      showToast('Buku telah dihapus dari perpustakaan.', 'info');
+      playBeepSound(480);
+    }
+  });
 }
 
 // ==========================================
@@ -1076,85 +1387,144 @@ function exportToCsv() {
 }
 
 function handleImportJson(e) {
-  const file = e.target.files[0];
-  if (!file) return;
+  requireAdmin(() => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-  const reader = new FileReader();
-  reader.onload = (event) => {
-    try {
-      const imported = JSON.parse(event.target.result);
-      if (Array.isArray(imported)) {
-        if (confirm(`Ditemukan ${imported.length} buku. Apakah Anda ingin menggabungkan dengan koleksi saat ini?`)) {
-          // Merge avoiding exact duplicates by ISBN or ID
-          const existingIsbns = new Set(books.map(b => b.isbn).filter(Boolean));
-          let addedCount = 0;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const imported = JSON.parse(event.target.result);
+        if (Array.isArray(imported)) {
+          if (confirm(`Ditemukan ${imported.length} buku. Apakah Anda ingin menggabungkan dengan koleksi saat ini?`)) {
+            // Merge avoiding exact duplicates by ISBN or ID
+            const existingIsbns = new Set(books.map(b => b.isbn).filter(Boolean));
+            let addedCount = 0;
 
-          imported.forEach(item => {
-            if (item.title && item.author) {
-              if (!item.isbn || !existingIsbns.has(item.isbn)) {
-                books.push({
-                  ...item,
-                  id: item.id || ('book-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4)),
-                  createdAt: item.createdAt || new Date().toISOString()
-                });
-                addedCount++;
+            imported.forEach(item => {
+              if (item.title && item.author) {
+                if (!item.isbn || !existingIsbns.has(item.isbn)) {
+                  books.push({
+                    ...item,
+                    id: item.id || ('book-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4)),
+                    createdAt: item.createdAt || new Date().toISOString()
+                  });
+                  addedCount++;
+                }
               }
-            }
-          });
+            });
 
-          saveBooksToStorage();
-          closeModal(backupModal);
-          showToast(`Berhasil mengimpor ${addedCount} buku baru!`, 'success');
+            saveBooksToStorage();
+            closeModal(backupModal);
+            showToast(`Berhasil mengimpor ${addedCount} buku baru!`, 'success');
+            playSuccessChime();
+          }
+        } else {
+          showToast('Format file JSON tidak valid.', 'error');
         }
-      } else {
-        showToast('Format file JSON tidak valid.', 'error');
+      } catch (err) {
+        showToast('Gagal membaca file JSON.', 'error');
       }
-    } catch (err) {
-      showToast('Gagal membaca file JSON.', 'error');
-    }
-  };
-  reader.readAsText(file);
+    };
+    reader.readAsText(file);
+  });
 }
 
 function handleClearAllBooks() {
-  if (confirm('PERINGATAN: Apakah Anda yakin ingin MENGHAPUS SEMUA buku dari perpustakaan? Tindakan ini tidak dapat dibatalkan.')) {
-    books = [];
-    saveBooksToStorage();
-    closeModal(backupModal);
-    showToast('Seluruh koleksi perpustakaan telah dikosongkan.', 'info');
-  }
+  requireAdmin(() => {
+    if (confirm('PERINGATAN: Apakah Anda yakin ingin MENGHAPUS SEMUA buku dari perpustakaan? Tindakan ini tidak dapat dibatalkan.')) {
+      books = [];
+      saveBooksToStorage();
+      closeModal(backupModal);
+      showToast('Seluruh koleksi perpustakaan telah dikosongkan.', 'info');
+      playBeepSound(400);
+    }
+  });
 }
 
 function loadDemoData() {
   books = [...DEMO_BOOKS];
   saveBooksToStorage();
   showToast('3 Buku contoh berhasil dimuat!', 'success');
+  playSuccessChime();
   fireConfetti();
 }
 
 // ==========================================
 // 11. AUDIO CHIME & CONFETTI & UTILS
 // ==========================================
-function playBeepSound() {
+function getAudioContext() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
+function playBeepSound(freq = 880, duration = 0.18) {
+  if (!isSoundEnabled) return;
   try {
-    if (!audioCtx) {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
+    const ctx = getAudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
     osc.connect(gain);
-    gain.connect(audioCtx.destination);
+    gain.connect(ctx.destination);
 
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, audioCtx.currentTime); // 880Hz A5 chime
-    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.18);
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
 
     osc.start();
-    osc.stop(audioCtx.currentTime + 0.18);
+    osc.stop(ctx.currentTime + duration);
   } catch (e) {
-    // Audio context not allowed without prior interaction or unsupported
+    // Audio context unsupported
   }
+}
+
+function playSuccessChime() {
+  if (!isSoundEnabled) return;
+  try {
+    const ctx = getAudioContext();
+    const notes = [523.25, 659.25, 783.99]; // C5, E5, G5 triad
+    notes.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      const startTime = ctx.currentTime + idx * 0.08;
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, startTime);
+      gain.gain.setValueAtTime(0.12, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.28);
+
+      osc.start(startTime);
+      osc.stop(startTime + 0.28);
+    });
+  } catch (e) {}
+}
+
+function playErrorSound() {
+  if (!isSoundEnabled) return;
+  try {
+    const ctx = getAudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(220, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(140, ctx.currentTime + 0.25);
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+
+    osc.start();
+    osc.stop(ctx.currentTime + 0.25);
+  } catch (e) {}
 }
 
 function fireConfetti() {
